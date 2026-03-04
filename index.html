@@ -90,7 +90,7 @@ footer { text-align: center; padding: 24px; color: #999; font-size: 12px; }
 
 <script>
 const GH = 'https://raw.githubusercontent.com/kyndly-technologies/cfa-design-studio/main/';
-const BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019cbace-4224-74aa-8e8e-82b8bbdf6e27';
+const API_URL = 'https://script.google.com/macros/s/AKfycby2ZYce8NdbkdFxmmhj5JK3iKvLeNVvoFS1sz5ETWG5CscN9xiz8anE9CQ9Dx8YWUdc/exec';
 let currentColor = '#e11d48';
 let currentTool = 'circle';
 let canvasMap = {};
@@ -295,30 +295,35 @@ function loadAnnotations(key) {
 
 async function pushToCloud() {
   try {
-    await fetch(BLOB_URL, {
-      method: 'PUT',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(sharedAnnotations)
+    // Apps Script POST via no-cors (fire-and-forget, data still saves)
+    await fetch(API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {'Content-Type': 'text/plain'},
+      body: JSON.stringify({action: 'save', data: sharedAnnotations})
     });
-    document.getElementById('syncStatus').textContent = '☁️ Synced';
+    document.getElementById('syncStatus').textContent = '☁️ Saved';
     setTimeout(() => document.getElementById('syncStatus').textContent = '', 2000);
   } catch(e) {
     document.getElementById('syncStatus').textContent = '⚠️ Sync failed';
+    console.log('Push failed:', e);
   }
 }
 
 async function pullFromCloud() {
   try {
-    const res = await fetch(BLOB_URL);
+    const res = await fetch(API_URL);
     const data = await res.json();
-    sharedAnnotations = data || {};
-    // Merge into canvasMap
-    Object.keys(sharedAnnotations).forEach(key => {
-      if (canvasMap[key]) {
-        canvasMap[key].strokes = sharedAnnotations[key] || [];
-        redraw(key);
-      }
-    });
+    if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+      sharedAnnotations = data;
+      // Merge into canvasMap
+      Object.keys(sharedAnnotations).forEach(key => {
+        if (canvasMap[key]) {
+          canvasMap[key].strokes = sharedAnnotations[key] || [];
+          redraw(key);
+        }
+      });
+    }
     document.getElementById('syncStatus').textContent = '☁️ Loaded';
     setTimeout(() => document.getElementById('syncStatus').textContent = '', 2000);
   } catch(e) {
