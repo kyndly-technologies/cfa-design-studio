@@ -243,6 +243,11 @@ function redraw(key) {
       ctx.moveTo(s.x2, s.y2);
       ctx.lineTo(s.x2 - headLen * Math.cos(angle + 0.4), s.y2 - headLen * Math.sin(angle + 0.4));
       ctx.stroke();
+      // Label
+      ctx.font = `${Math.max(14, s.size * 4)}px sans-serif`;
+      ctx.fillStyle = s.color;
+      ctx.globalAlpha = 0.85;
+      ctx.fillText(s.name, s.x1, s.y1 - 6);
     } else if (s.type === 'path') {
       ctx.beginPath();
       if (s.points.length > 0) {
@@ -250,6 +255,13 @@ function redraw(key) {
         s.points.forEach(p => ctx.lineTo(p.x, p.y));
       }
       ctx.stroke();
+      // Label
+      if (s.points.length > 0) {
+        ctx.font = `${Math.max(14, s.size * 4)}px sans-serif`;
+        ctx.fillStyle = s.color;
+        ctx.globalAlpha = 0.85;
+        ctx.fillText(s.name, s.points[0].x, s.points[0].y - 6);
+      }
     }
     ctx.globalAlpha = 1;
   });
