@@ -67,6 +67,7 @@ footer { text-align: center; padding: 24px; color: #999; font-size: 12px; }
   <label>Size:</label>
   <input type="range" id="sizeSlider" min="2" max="8" value="3">
   <button class="clear-btn" onclick="clearCurrent()">Clear mine</button>
+  <span id="syncStatus" style="font-size:12px;color:#0d9488;font-weight:600"></span>
 </div>
 
 <div class="section-title">🤖 AI Prototypes</div>
@@ -89,9 +90,12 @@ footer { text-align: center; padding: 24px; color: #999; font-size: 12px; }
 
 <script>
 const GH = 'https://raw.githubusercontent.com/kyndly-technologies/cfa-design-studio/main/';
+const BLOB_URL = 'https://jsonblob.com/api/jsonBlob/019cbace-4224-74aa-8e8e-82b8bbdf6e27';
 let currentColor = '#e11d48';
 let currentTool = 'circle';
 let canvasMap = {};
+let sharedAnnotations = {};
+let syncTimer = null;
 
 const aiMocks = [
   { title: 'v0 — Results Dashboard', src: 'ai-mocks/lovable-step1-upload.png', key: 'v0-dashboard' },
@@ -268,15 +272,62 @@ function redraw(key) {
 }
 
 function saveAnnotations(key) {
+  // Save locally as backup
   try { localStorage.setItem('cfa-vote-' + key, JSON.stringify(canvasMap[key].strokes)); } catch(e) {}
+  // Sync to shared store (debounced)
+  sharedAnnotations[key] = canvasMap[key].strokes;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(pushToCloud, 800);
 }
 
 function loadAnnotations(key) {
-  try {
-    const data = localStorage.getItem('cfa-vote-' + key);
-    if (data) { canvasMap[key].strokes = JSON.parse(data); redraw(key); }
-  } catch(e) {}
+  // Load from shared store first, fall back to local
+  if (sharedAnnotations[key] && sharedAnnotations[key].length > 0) {
+    canvasMap[key].strokes = sharedAnnotations[key];
+    redraw(key);
+  } else {
+    try {
+      const data = localStorage.getItem('cfa-vote-' + key);
+      if (data) { canvasMap[key].strokes = JSON.parse(data); redraw(key); }
+    } catch(e) {}
+  }
 }
+
+async function pushToCloud() {
+  try {
+    await fetch(BLOB_URL, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(sharedAnnotations)
+    });
+    document.getElementById('syncStatus').textContent = '☁️ Synced';
+    setTimeout(() => document.getElementById('syncStatus').textContent = '', 2000);
+  } catch(e) {
+    document.getElementById('syncStatus').textContent = '⚠️ Sync failed';
+  }
+}
+
+async function pullFromCloud() {
+  try {
+    const res = await fetch(BLOB_URL);
+    const data = await res.json();
+    sharedAnnotations = data || {};
+    // Merge into canvasMap
+    Object.keys(sharedAnnotations).forEach(key => {
+      if (canvasMap[key]) {
+        canvasMap[key].strokes = sharedAnnotations[key] || [];
+        redraw(key);
+      }
+    });
+    document.getElementById('syncStatus').textContent = '☁️ Loaded';
+    setTimeout(() => document.getElementById('syncStatus').textContent = '', 2000);
+  } catch(e) {
+    console.log('Pull failed:', e);
+  }
+}
+
+// Poll for updates every 15 seconds
+setInterval(pullFromCloud, 15000);
 
 function pickColor(el) {
   document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
@@ -294,16 +345,19 @@ function clearCurrent() {
   const name = document.getElementById('nameInput').value || 'Anonymous';
   Object.keys(canvasMap).forEach(key => {
     canvasMap[key].strokes = canvasMap[key].strokes.filter(s => s.name !== name);
-    saveAnnotations(key);
+    sharedAnnotations[key] = canvasMap[key].strokes;
     redraw(key);
   });
+  pushToCloud();
 }
 
-// Build galleries
-const aiGallery = document.getElementById('ai-gallery');
-aiMocks.forEach(m => createCard(m, aiGallery));
-const paperGallery = document.getElementById('paper-gallery');
-papers.forEach(m => createCard(m, paperGallery));
+// Load shared annotations first, then build galleries
+pullFromCloud().then(() => {
+  const aiGallery = document.getElementById('ai-gallery');
+  aiMocks.forEach(m => createCard(m, aiGallery));
+  const paperGallery = document.getElementById('paper-gallery');
+  papers.forEach(m => createCard(m, paperGallery));
+});
 </script>
 </body>
 </html>
