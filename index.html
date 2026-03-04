@@ -94,11 +94,11 @@ let currentTool = 'circle';
 let canvasMap = {};
 
 const aiMocks = [
-  { title: 'v0 — Results Dashboard', src: 'ai-mocks/lovable-step1-upload.png', note: 'v0 screenshot pending — see interactive link above' },
-  { title: 'Lovable — Step 1: Upload', src: 'ai-mocks/lovable-step1-upload.png' },
-  { title: 'Lovable — Step 2: Company Config', src: 'ai-mocks/lovable-step2-config.png' },
-  { title: 'Stitch V1 — Desktop Dashboard', src: 'ai-mocks/stitch-v1-desktop.jpg' },
-  { title: 'Stitch V2 — Plan Cards', src: 'ai-mocks/stitch-v2-desktop.jpg' },
+  { title: 'v0 — Results Dashboard', src: 'ai-mocks/lovable-step1-upload.png', key: 'v0-dashboard' },
+  { title: 'Lovable — Step 1: Upload', src: 'ai-mocks/lovable-step1-upload.png', key: 'lovable-step1' },
+  { title: 'Lovable — Step 2: Company Config', src: 'ai-mocks/lovable-step2-config.png', key: 'lovable-step2' },
+  { title: 'Stitch V1 — Desktop Dashboard', src: 'ai-mocks/stitch-v1-desktop.jpg', key: 'stitch-v1' },
+  { title: 'Stitch V2 — Plan Cards', src: 'ai-mocks/stitch-v2-desktop.jpg', key: 'stitch-v2' },
 ];
 
 const papers = [];
@@ -108,6 +108,7 @@ for (let i = 1; i <= 14; i++) {
 }
 
 function createCard(item, container) {
+  const key = item.key || item.src;
   const card = document.createElement('div');
   card.className = 'card';
   card.innerHTML = `<div class="card-title">${item.title}</div><div class="canvas-wrap"><img src="${GH}${item.src}" crossorigin="anonymous"><canvas></canvas></div>`;
@@ -121,8 +122,8 @@ function createCard(item, container) {
     canvas.width = img.naturalWidth;
     canvas.height = img.naturalHeight;
     const ctx = canvas.getContext('2d');
-    canvasMap[item.src] = { canvas, ctx, strokes: [] };
-    loadAnnotations(item.src);
+    canvasMap[key] = { canvas, ctx, strokes: [] };
+    loadAnnotations(key);
   };
   
   let drawing = false, startX, startY;
@@ -142,7 +143,7 @@ function createCard(item, container) {
     const p = getPos(e);
     startX = p.x; startY = p.y;
     if (currentTool === 'draw') {
-      canvasMap[item.src].currentPath = [p];
+      canvasMap[key].currentPath = [p];
     }
   }
   
@@ -151,11 +152,11 @@ function createCard(item, container) {
     e.preventDefault();
     if (currentTool === 'draw') {
       const p = getPos(e);
-      canvasMap[item.src].currentPath.push(p);
-      redraw(item.src);
+      canvasMap[key].currentPath.push(p);
+      redraw(key);
       // Draw current path preview
-      const ctx = canvasMap[item.src].ctx;
-      const path = canvasMap[item.src].currentPath;
+      const ctx = canvasMap[key].ctx;
+      const path = canvasMap[key].currentPath;
       ctx.strokeStyle = currentColor;
       ctx.lineWidth = parseInt(document.getElementById('sizeSlider').value) * 2;
       ctx.lineCap = 'round';
@@ -186,14 +187,14 @@ function createCard(item, container) {
     } else if (currentTool === 'arrow') {
       stroke = { type: 'arrow', x1: startX, y1: startY, x2: endPos.x, y2: endPos.y, color: currentColor, size, name, time: Date.now() };
     } else if (currentTool === 'draw') {
-      stroke = { type: 'path', points: canvasMap[item.src].currentPath, color: currentColor, size, name, time: Date.now() };
-      canvasMap[item.src].currentPath = [];
+      stroke = { type: 'path', points: canvasMap[key].currentPath, color: currentColor, size, name, time: Date.now() };
+      canvasMap[key].currentPath = [];
     }
     
     if (stroke) {
-      canvasMap[item.src].strokes.push(stroke);
-      saveAnnotations(item.src);
-      redraw(item.src);
+      canvasMap[key].strokes.push(stroke);
+      saveAnnotations(key);
+      redraw(key);
     }
   }
   
