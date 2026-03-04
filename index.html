@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CFA Design Studio — Dot Voting</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0fdf4; color: #1a1a2e; }
+
+.header { background: #0d9488; color: white; padding: 20px 24px; position: sticky; top: 0; z-index: 100; }
+.header h1 { font-size: 22px; margin-bottom: 6px; }
+.header p { font-size: 13px; opacity: 0.9; max-width: 800px; }
+
+.toolbar { background: #f0fdfa; border-bottom: 2px solid #0d9488; padding: 10px 24px; position: sticky; top: 80px; z-index: 99; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.toolbar label { font-size: 13px; font-weight: 600; }
+.toolbar input[type=text] { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; width: 120px; }
+.toolbar input[type=range] { width: 80px; }
+.color-btn { width: 28px; height: 28px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; transition: border-color 0.15s; }
+.color-btn.active { border-color: #1a1a2e; }
+.tool-btn { padding: 6px 14px; border: 1px solid #0d9488; background: white; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.15s; }
+.tool-btn.active, .tool-btn:hover { background: #0d9488; color: white; }
+.clear-btn { padding: 6px 14px; border: 1px solid #e11d48; background: white; color: #e11d48; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.clear-btn:hover { background: #e11d48; color: white; }
+
+.section-title { padding: 16px 24px 8px; font-size: 18px; font-weight: 700; color: #0d9488; border-top: 3px solid #0d9488; margin-top: 20px; }
+.section-subtitle { padding: 0 24px 12px; font-size: 13px; color: #666; }
+
+.gallery { padding: 0 24px 24px; display: grid; grid-template-columns: 1fr; gap: 24px; max-width: 1000px; margin: 0 auto; }
+
+.card { background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+.card-title { padding: 10px 16px; font-size: 14px; font-weight: 600; color: #0d9488; background: #f0fdfa; border-bottom: 1px solid #e0f2f1; }
+.canvas-wrap { position: relative; cursor: crosshair; touch-action: none; }
+.canvas-wrap img { width: 100%; display: block; }
+.canvas-wrap canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+.links { padding: 16px 24px; background: #f0fdfa; }
+.links a { display: block; color: #0d9488; text-decoration: none; font-size: 13px; padding: 4px 0; }
+.links a:hover { text-decoration: underline; }
+
+.vote-count { position: absolute; top: 8px; right: 8px; background: #0d9488; color: white; border-radius: 20px; padding: 4px 10px; font-size: 12px; font-weight: 600; z-index: 10; }
+
+footer { text-align: center; padding: 24px; color: #999; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🎨 CFA Design Studio — Dot Voting</h1>
+  <p>Draw circles, arrows, or highlights on the designs to mark what you like (or don't). Pick your color, pick your tool, and annotate directly. No login needed. Deadline: EOD Thursday March 5.</p>
+</div>
+
+<div class="toolbar">
+  <label>Your name:</label>
+  <input type="text" id="nameInput" placeholder="Enter name">
+  <label>Color:</label>
+  <div class="color-btn active" style="background:#e11d48" data-color="#e11d48" onclick="pickColor(this)"></div>
+  <div class="color-btn" style="background:#2563eb" data-color="#2563eb" onclick="pickColor(this)"></div>
+  <div class="color-btn" style="background:#16a34a" data-color="#16a34a" onclick="pickColor(this)"></div>
+  <div class="color-btn" style="background:#9333ea" data-color="#9333ea" onclick="pickColor(this)"></div>
+  <div class="color-btn" style="background:#ea580c" data-color="#ea580c" onclick="pickColor(this)"></div>
+  <div class="color-btn" style="background:#0d9488" data-color="#0d9488" onclick="pickColor(this)"></div>
+  <label>Tool:</label>
+  <button class="tool-btn active" data-tool="circle" onclick="pickTool(this)">⭕ Circle</button>
+  <button class="tool-btn" data-tool="draw" onclick="pickTool(this)">✏️ Draw</button>
+  <button class="tool-btn" data-tool="arrow" onclick="pickTool(this)">➡️ Arrow</button>
+  <label>Size:</label>
+  <input type="range" id="sizeSlider" min="2" max="8" value="3">
+  <button class="clear-btn" onclick="clearCurrent()">Clear mine</button>
+</div>
+
+<div class="section-title">🤖 AI Prototypes</div>
+<div class="section-subtitle">Also try the interactive versions — links below each screenshot</div>
+<div class="gallery" id="ai-gallery"></div>
+
+<div class="links">
+  <strong>Interactive prototype links (click around!):</strong>
+  <a href="https://vm-mar7l7fay4z8fgjrpeb7hn.vusercontent.net/" target="_blank">🔗 v0 — Full interactive dashboard</a>
+  <a href="https://id-preview--a2a349fe-a6a1-44c3-8dc3-770123c539a9.lovable.app/" target="_blank">🔗 Lovable — Full 5-step wizard (interactive)</a>
+  <a href="https://stitch.withgoogle.com/preview/10512421699703202370?node-id=5619ba9561064434972879e2e3aa8bec" target="_blank">🔗 Stitch V1 — Desktop dashboard</a>
+  <a href="https://stitch.withgoogle.com/preview/10512421699703202370?node-id=6a78a5a9636a4bb2a6fd9d3d75df7029" target="_blank">🔗 Stitch V2 — Mobile-optimized</a>
+</div>
+
+<div class="section-title">📝 Paper Sketches</div>
+<div class="section-subtitle">From today's design studio session</div>
+<div class="gallery" id="paper-gallery"></div>
+
+<footer>CFA Design Studio — Kyndly Technologies — March 4, 2026</footer>
+
+<script>
+const GH = 'https://raw.githubusercontent.com/kyndly-technologies/cfa-design-studio/main/';
+let currentColor = '#e11d48';
+let currentTool = 'circle';
+let canvasMap = {};
+
+const aiMocks = [
+  { title: 'v0 — Results Dashboard', src: 'ai-mocks/lovable-step1-upload.png', note: 'v0 screenshot pending — see interactive link above' },
+  { title: 'Lovable — Step 1: Upload', src: 'ai-mocks/lovable-step1-upload.png' },
+  { title: 'Lovable — Step 2: Company Config', src: 'ai-mocks/lovable-step2-config.png' },
+  { title: 'Stitch V1 — Desktop Dashboard', src: 'ai-mocks/stitch-v1-desktop.jpg' },
+  { title: 'Stitch V2 — Plan Cards', src: 'ai-mocks/stitch-v2-desktop.jpg' },
+];
+
+const papers = [];
+for (let i = 1; i <= 14; i++) {
+  const names = ['01-black-r1','02-black-r2','03-magenta','04-purple-r1','05-orange-r1','06-purple-r2','07-orange-r2','08-red-r1','09-red-r2','10-red-r3','11-extra1','12-extra2','13-extra3','14-extra4'];
+  papers.push({ title: 'Paper Sketch ' + i + ' of 14', src: 'paper-mockups/' + names[i-1] + '.jpg' });
+}
+
+function createCard(item, container) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.innerHTML = `<div class="card-title">${item.title}</div><div class="canvas-wrap"><img src="${GH}${item.src}" crossorigin="anonymous"><canvas></canvas></div>`;
+  container.appendChild(card);
+  
+  const img = card.querySelector('img');
+  const canvas = card.querySelector('canvas');
+  const wrap = card.querySelector('.canvas-wrap');
+  
+  img.onload = () => {
+    canvas.width = img.naturalWidth;
+    canvas.height = img.naturalHeight;
+    const ctx = canvas.getContext('2d');
+    canvasMap[item.src] = { canvas, ctx, strokes: [] };
+    loadAnnotations(item.src);
+  };
+  
+  let drawing = false, startX, startY;
+  
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : e;
+    return {
+      x: (touch.clientX - rect.left) * (canvas.width / rect.width),
+      y: (touch.clientY - rect.top) * (canvas.height / rect.height)
+    };
+  }
+  
+  function onStart(e) {
+    e.preventDefault();
+    drawing = true;
+    const p = getPos(e);
+    startX = p.x; startY = p.y;
+    if (currentTool === 'draw') {
+      canvasMap[item.src].currentPath = [p];
+    }
+  }
+  
+  function onMove(e) {
+    if (!drawing) return;
+    e.preventDefault();
+    if (currentTool === 'draw') {
+      const p = getPos(e);
+      canvasMap[item.src].currentPath.push(p);
+      redraw(item.src);
+      // Draw current path preview
+      const ctx = canvasMap[item.src].ctx;
+      const path = canvasMap[item.src].currentPath;
+      ctx.strokeStyle = currentColor;
+      ctx.lineWidth = parseInt(document.getElementById('sizeSlider').value) * 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(path[0].x, path[0].y);
+      path.forEach(pt => ctx.lineTo(pt.x, pt.y));
+      ctx.stroke();
+    }
+  }
+  
+  function onEnd(e) {
+    if (!drawing) return;
+    drawing = false;
+    const endPos = e.changedTouches ? 
+      { x: (e.changedTouches[0].clientX - canvas.getBoundingClientRect().left) * (canvas.width / canvas.getBoundingClientRect().width),
+        y: (e.changedTouches[0].clientY - canvas.getBoundingClientRect().top) * (canvas.height / canvas.getBoundingClientRect().height) }
+      : getPos(e);
+    
+    const name = document.getElementById('nameInput').value || 'Anonymous';
+    const size = parseInt(document.getElementById('sizeSlider').value);
+    
+    let stroke;
+    if (currentTool === 'circle') {
+      const dx = endPos.x - startX, dy = endPos.y - startY;
+      const r = Math.sqrt(dx*dx + dy*dy);
+      stroke = { type: 'circle', x: startX, y: startY, r: Math.max(r, 20), color: currentColor, size, name, time: Date.now() };
+    } else if (currentTool === 'arrow') {
+      stroke = { type: 'arrow', x1: startX, y1: startY, x2: endPos.x, y2: endPos.y, color: currentColor, size, name, time: Date.now() };
+    } else if (currentTool === 'draw') {
+      stroke = { type: 'path', points: canvasMap[item.src].currentPath, color: currentColor, size, name, time: Date.now() };
+      canvasMap[item.src].currentPath = [];
+    }
+    
+    if (stroke) {
+      canvasMap[item.src].strokes.push(stroke);
+      saveAnnotations(item.src);
+      redraw(item.src);
+    }
+  }
+  
+  canvas.addEventListener('mousedown', onStart);
+  canvas.addEventListener('mousemove', onMove);
+  canvas.addEventListener('mouseup', onEnd);
+  canvas.addEventListener('touchstart', onStart, { passive: false });
+  canvas.addEventListener('touchmove', onMove, { passive: false });
+  canvas.addEventListener('touchend', onEnd);
+}
+
+function redraw(key) {
+  const { canvas, ctx, strokes } = canvasMap[key];
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  strokes.forEach(s => {
+    ctx.strokeStyle = s.color;
+    ctx.lineWidth = s.size * 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.globalAlpha = 0.7;
+    
+    if (s.type === 'circle') {
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.stroke();
+      // Label
+      ctx.font = `${Math.max(14, s.size * 4)}px sans-serif`;
+      ctx.fillStyle = s.color;
+      ctx.globalAlpha = 0.85;
+      ctx.fillText(s.name, s.x - s.r, s.y - s.r - 4);
+    } else if (s.type === 'arrow') {
+      ctx.beginPath();
+      ctx.moveTo(s.x1, s.y1);
+      ctx.lineTo(s.x2, s.y2);
+      ctx.stroke();
+      // Arrowhead
+      const angle = Math.atan2(s.y2 - s.y1, s.x2 - s.x1);
+      const headLen = 15 + s.size * 3;
+      ctx.beginPath();
+      ctx.moveTo(s.x2, s.y2);
+      ctx.lineTo(s.x2 - headLen * Math.cos(angle - 0.4), s.y2 - headLen * Math.sin(angle - 0.4));
+      ctx.moveTo(s.x2, s.y2);
+      ctx.lineTo(s.x2 - headLen * Math.cos(angle + 0.4), s.y2 - headLen * Math.sin(angle + 0.4));
+      ctx.stroke();
+    } else if (s.type === 'path') {
+      ctx.beginPath();
+      if (s.points.length > 0) {
+        ctx.moveTo(s.points[0].x, s.points[0].y);
+        s.points.forEach(p => ctx.lineTo(p.x, p.y));
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  });
+}
+
+function saveAnnotations(key) {
+  try { localStorage.setItem('cfa-vote-' + key, JSON.stringify(canvasMap[key].strokes)); } catch(e) {}
+}
+
+function loadAnnotations(key) {
+  try {
+    const data = localStorage.getItem('cfa-vote-' + key);
+    if (data) { canvasMap[key].strokes = JSON.parse(data); redraw(key); }
+  } catch(e) {}
+}
+
+function pickColor(el) {
+  document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentColor = el.dataset.color;
+}
+
+function pickTool(el) {
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  currentTool = el.dataset.tool;
+}
+
+function clearCurrent() {
+  const name = document.getElementById('nameInput').value || 'Anonymous';
+  Object.keys(canvasMap).forEach(key => {
+    canvasMap[key].strokes = canvasMap[key].strokes.filter(s => s.name !== name);
+    saveAnnotations(key);
+    redraw(key);
+  });
+}
+
+// Build galleries
+const aiGallery = document.getElementById('ai-gallery');
+aiMocks.forEach(m => createCard(m, aiGallery));
+const paperGallery = document.getElementById('paper-gallery');
+papers.forEach(m => createCard(m, paperGallery));
+</script>
+</body>
+</html>
