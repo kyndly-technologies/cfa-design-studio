@@ -281,36 +281,39 @@ function redraw(key) {
       const lineH = fontSize * 1.3;
       const nameH = fontSize * 0.7;
       const bubbleH = nameH + padY + lines.length * lineH + padY;
+      // Center bubble on click point
+      const bx = s.x - bubbleW / 2, by = s.y - bubbleH;
       // Bubble background
       ctx.globalAlpha = 0.88;
       ctx.fillStyle = '#fff';
       ctx.strokeStyle = s.color;
       ctx.lineWidth = 3;
-      const bx = s.x, by = s.y - bubbleH;
       ctx.beginPath();
       ctx.roundRect(bx, by, bubbleW, bubbleH, 8);
       ctx.fill();
       ctx.stroke();
       // Pointer triangle
       ctx.beginPath();
-      ctx.moveTo(bx + 10, s.y);
-      ctx.lineTo(bx + 20, s.y + 12);
-      ctx.lineTo(bx + 30, s.y);
+      ctx.moveTo(s.x - 10, s.y);
+      ctx.lineTo(s.x, s.y + 12);
+      ctx.lineTo(s.x + 10, s.y);
       ctx.fillStyle = '#fff';
       ctx.fill();
       ctx.strokeStyle = s.color;
       ctx.stroke();
-      // Name
+      // Name (centered)
       ctx.globalAlpha = 0.9;
       ctx.fillStyle = s.color;
       ctx.font = `bold ${fontSize * 0.65}px sans-serif`;
-      ctx.fillText(s.name, bx + padX, by + padY + nameH);
-      // Comment text
+      ctx.textAlign = 'center';
+      ctx.fillText(s.name, bx + bubbleW / 2, by + padY + nameH);
+      // Comment text (centered)
       ctx.fillStyle = '#1a1a2e';
       ctx.font = `${fontSize}px sans-serif`;
       lines.forEach((line, i) => {
-        ctx.fillText(line, bx + padX, by + padY + nameH + 6 + (i + 1) * lineH);
+        ctx.fillText(line, bx + bubbleW / 2, by + padY + nameH + 6 + (i + 1) * lineH);
       });
+      ctx.textAlign = 'left';
     }
     ctx.globalAlpha = 1;
   });
